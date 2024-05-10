@@ -50,9 +50,7 @@ def go(config: DictConfig):
             )
 
         if "basic_cleaning" in active_steps:
-            ##################
-            # Implement here #
-            ##################
+            # Pre-processing data
            _ = mlflow.run(
                 os.path.join(hydra.utils.get_original_cwd(), "src", "basic_cleaning"),
                 "main",
@@ -67,9 +65,7 @@ def go(config: DictConfig):
             )
 
         if "data_check" in active_steps:
-            ##################
-            # Implement here #
-            ##################
+            # Run Pytests
            _ = mlflow.run(
                 os.path.join(hydra.utils.get_original_cwd(), "src", "data_check"),
                 "main",
@@ -84,9 +80,7 @@ def go(config: DictConfig):
             
 
         if "data_split" in active_steps:
-            ##################
-            # Implement here #
-            ##################
+            # Prepare data for modelling - train/test split
             _ = mlflow.run(
                 f"{config['main']['components_repository']}/train_val_test_split",
                 "main",
@@ -109,20 +103,32 @@ def go(config: DictConfig):
 
             # NOTE: use the rf_config we just created as the rf_config parameter for the train_random_forest
             # step
-
-            ##################
-            # Implement here #
-            ##################
-
-            pass
+            _ = mlflow.run(
+                os.path.join(hydra.utils.get_original_cwd(), "src", "train_random_forest"),
+                "main",
+                parameters={
+                    "trainval_artifact" : "nyc_airbnb/trainval_data.csv:latest",
+                    "val_size" : config['modeling']['val_size'],
+                    "random_seed" : config['modeling']['random_seed'],
+                    "stratify_by" : config['modeling']['stratify_by'],
+                    "rf_config" : rf_config,
+                    "max_tfidf_features" : config['modeling']['max_tfidf_features'],
+                    "output_artifact" : config['modeling']['output_artifact']
+                }
+            )
 
         if "test_regression_model" in active_steps:
-
-            ##################
-            # Implement here #
-            ##################
-
-            pass
+            # Test the best perfonming model in production against test dataset
+            _ = mlflow.run(
+                f"{config['main']['components_repository']}/test_regression_model",
+                "main",
+                version='main',
+                parameters={
+                    "mlflow_model": "random_forest_export:prod",
+                    "test_dataset": "test_data.csv:latest"
+                }
+            )
+        
 
 
 if __name__ == "__main__":
